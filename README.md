@@ -1,7 +1,7 @@
 Angular Click X
 ===============
 
-**clickX** is an alternative to core ``ngClick`` directive provided by ``ngTouch`` component.  
+**clickX** is an alternative to core ``ngClick`` directive provided by ``ngTouch`` module.  
 Simple, configurable & lightweight!
 
 ##### _Why?_
