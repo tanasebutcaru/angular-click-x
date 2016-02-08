@@ -57,6 +57,7 @@ angular.module('tb.clickX', [])
 
 	.directive('clickX', ['$parse', '$window', 'clickXConfig', function($parse, $window, cx) {
 		return {
+			priority: 0,
 			restrict: 'A',
 			
 			link: function(scope, el, attrs) {
@@ -70,30 +71,14 @@ angular.module('tb.clickX', [])
 					element.addEventListener('touchcancel', actionCancel);
 				}
 				else {
-					element.addEventListener('mousedown', function(e) {
-						$window.clickX.startTarget = document.elementFromPoint(e.clientX, e.clientY);
-						actionPrepare(e);
-					});
+					element.addEventListener('mousedown', actionPrepare);
 					element.addEventListener('mouseup', actionLaunch);
-					$window.addEventListener('mouseup', function(e){
-						if ($window.clickX.hasOwnProperty('startTarget')) {
-							if ( ! isSameTarget(e, true)) {
-								for (var prop in $window.clickX) {
-									delete $window.clickX[prop];
-								}
-							}
-						}
-					});
-					element.addEventListener('mouseenter', actionPrepare);
-					element.addEventListener('mouseleave', function(e){
-						if($window.clickX.hasOwnProperty('startTarget')) {
-							actionCancel(e);
-						}
-					});
+					$window.addEventListener('mouseup', bindWindowMouseUp);
+					element.addEventListener('mouseenter', bindElementMouseEnter);
+					element.addEventListener('mouseleave', bindElementMouseLeave);
 				}
-				element.addEventListener('click', function(e) {
-					return false;
-				});
+				
+				element.addEventListener('click', stopClickAction);
 
 				//fn: actionPrepare
 				//desc: on mouse button / finger press.
@@ -104,10 +89,17 @@ angular.module('tb.clickX', [])
 
 					if (cx.isMobile) {
 						element.classList.add(activeClass);
+						setElemenetStart(e.changedTouches[0].clientX, e.changedTouches[0].clientY);
 					}
-					else if ($window.clickX.hasOwnProperty('startTarget')) {
-						if (isSameTarget(e, true)) {
+					else {
+						if ($window.clickX.hasOwnProperty('startTarget')) {
+							if (isSameTarget(e, true)) {
+								element.classList.add(activeClass);
+							}
+						}
+						else {
 							element.classList.add(activeClass);
+							setElemenetStart(e.clientX, e.clientY);
 						}
 					}
 				}
@@ -130,11 +122,12 @@ angular.module('tb.clickX', [])
 					element.classList.remove(activeClass);
 				}
 
-				//fn: isSameTarget
+				//helperFn: isSameTarget
 				//desc: before launch, check if the action is released upon same target or its child nodes.
 				function isSameTarget(e, justCheck) {
 					var startTarget, endClientX, endClientY, endTarget,
-						isSameTarget = false;
+						isChild = false, isEqual = false, isSameTarget = false,
+						startPosition,  endPosition;
 
 					if (cx.isMobile) {
 						endClientX = e.changedTouches[0].clientX;
@@ -145,23 +138,115 @@ angular.module('tb.clickX', [])
 						endClientX = e.clientX;
 						endClientY = e.clientY;
 						startTarget = $window.clickX.startTarget;
-
-						if ( ! justCheck) {
-							for (var prop in $window.clickX) {
-								delete $window.clickX[prop];
-							}
-						}
 					}
 					else {
 						return isSameTarget;
 					}
 
 					endTarget = document.elementFromPoint(endClientX, endClientY);
-					isSameTarget = startTarget.contains(endTarget) || startTarget.isEqualNode(endTarget);
+					isChild = startTarget.contains(endTarget);
+					isEqual = startTarget.isEqualNode(endTarget);
+					isSameTarget = isChild || isEqual;
+
+					//check if target position remains the same
+					//if diff, then a scroll happend
+					if (isSameTarget) {
+						startPosition = $window.clickX.startPosition;
+						endPosition = getElementPosition($window.clickX.startTarget);
+
+						if ( ! angular.equals(startPosition, endPosition)) {
+							isSameTarget = false;
+						}
+					}
+
+					if ( ! justCheck) {
+						clickXWindowClean();
+					}
 
 					return isSameTarget;
 				}
 
+				//helperFn: bindWindowMouseUp
+				function bindWindowMouseUp(e){
+					if ($window.clickX.hasOwnProperty('startTarget')) {
+						if ( ! isSameTarget(e, true)) {
+							clickXWindowClean();
+						}
+					}
+				}
+
+				//helperFn: bindElementMouseEnter
+				function bindElementMouseEnter(e){
+					if ($window.clickX.hasOwnProperty('startTarget')) {
+						actionPrepare(e);
+					}
+				}
+
+				//helperFn: bindElementMouseLeave
+				function bindElementMouseLeave(e){
+					if($window.clickX.hasOwnProperty('startTarget')) {
+						actionCancel(e);
+					}
+				}
+
+				//helperFn: stopClickAction
+				function stopClickAction(e) {
+					e.preventDefault();
+				}
+
+				//helperFn: clickXClean
+				function clickXWindowClean() {
+					for (var prop in $window.clickX) {
+						delete $window.clickX[prop];
+					}
+				}
+
+				//helperFn: getElementPosition
+				function getElementPosition(elem) {
+					return {
+						top: elem.getBoundingClientRect().top,
+						left: elem.getBoundingClientRect().left,
+						right: elem.getBoundingClientRect().right
+					};
+				}
+
+				//helperFn: setElemenetStart
+				//desc: get element from x,y & calculate its start position
+				function setElemenetStart(clientX, clientY){
+					$window.clickX.startTarget = document.elementFromPoint(clientX, clientY);
+					$window.clickX.startPosition = getElementPosition($window.clickX.startTarget);
+				}
+
+				//helperFn: getClickXParent
+				//desc: determine the parent node with click-x attr
+				function getClickXParent(childEl) {
+					var parentEl = childEl.parentNode;
+
+					while (parentEl.hasAttribute('click-x') === false) {
+						parentEl = parentEl.parentNode;
+					}
+
+					return parentEl;
+				}
+
+				//clean up!
+				scope.$on('$destroy', function() {
+					if (cx.isMobile) {
+						element.removeEventListener('touchstart', actionPrepare);
+						element.removeEventListener('touchend', actionLaunch);
+						element.removeEventListener('touchcancel', actionCancel);						
+					}
+					else {
+						element.removeEventListener('mousedown', actionPrepare);
+						element.removeEventListener('mouseup', actionLaunch);
+						$window.removeEventListener('mouseup', bindWindowMouseUp);
+						element.removeEventListener('mouseenter', bindElementMouseEnter);
+						element.removeEventListener('mouseleave', bindElementMouseLeave);
+					}
+
+					element.removeEventListener('click', stopClickAction);
+					clickXWindowClean();
+				});
 			}
 		}
 	}]);
