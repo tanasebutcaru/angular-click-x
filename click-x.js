@@ -19,9 +19,12 @@ angular.module('tb.clickX', [])
 		this.activeClass = 'click-x-active';
 		this.isMobile = getDeviceType();
 		this.swipeDetect = {
-			threshold: 50, //required min distance traveled to be considered swipe (px)
-			restraint: 50, //max distance allowed at the same time in perpendicular direction (px)
-			allowedTime: 400 //max time allowed to travel that distance (ms)
+			//required min distance traveled to be considered swipe (px)
+	    	threshold: 50,
+	        //max distance allowed at the same time in perpendicular direction (px)
+	        restraint: 50,
+	        //max time allowed to travel that distance (ms)
+	        allowedTime: 400
 		};
 		
 		this.setActiveClass = function(className) {

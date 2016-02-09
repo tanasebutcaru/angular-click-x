@@ -23,14 +23,25 @@ angular.module('yourApp', ['tb.clickX']);
 
 Configuration
 -------
+Inject the ``clickXConfigProvider`` provider in your config block and configure ``clickX`` as follows:
 
-configure the active class name (defaults to ``click-x-active``)
+* change default active class name (defaults to ``click-x-active``)
 
 ```js
-app.config(['clickXConfigProvider', function(clickXConfigProvider) {
-	clickXConfigProvider.setActiveClass('myNewClass');
-}])
+clickXConfigProvider.setActiveClass('myNewClass');
 ```
+* adjust swipe detection process
+```js
+clickXConfigProvider.configSwipeDetection({
+  //required min distance traveled to be considered swipe (px)
+  threshold: 50,
+  //max distance allowed at the same time in perpendicular direction (px)
+  restraint: 50,
+  //max time allowed to travel that distance (ms)
+  allowedTime: 400
+});
+```
+
 Usage
 ---
 
