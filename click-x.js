@@ -15,10 +15,37 @@ if (typeof module !== 'undefined' && typeof exports !== 'undefined' && module.ex
 angular.module('tb.clickX', [])
 	
 	.provider('clickXConfig', function() {
+		window.clickX = {};
 		this.activeClass = 'click-x-active';
 		this.isMobile = getDeviceType();
-		window.clickX = {};
+		this.swipeDetect = {
+			threshold: 50, //required min distance traveled to be considered swipe (px)
+			restraint: 50, //max distance allowed at the same time in perpendicular direction (px)
+			allowedTime: 400 //max time allowed to travel that distance (ms)
+		};
+		
+		this.setActiveClass = function(className) {
+			if (angular.isString(className)) {
+				this.activeClass = className;
+			}
+		}
 
+		this.configSwipeDetection = function(swipeOptions) {
+			if (angular.isObject(swipeOptions)) {
+				angular.forEach(swipeOptions, function(optionValue, optionName) {
+					if (this.swipeDetect.hasOwnProperty(optionName) && angular.isNumber(optionValue)) {
+						this.swipeDetect[optionName] = optionValue;
+					}
+				}, this);
+			}
+		}
+
+		this.$get = function() {
+			return this;
+		}
+
+		//helperFn: getDeviceType
+		//source: https://github.com/kaimallea/isMobile/blob/master/isMobile.js
 		function getDeviceType() {
 			var isMobile = false,
 				mobileList = {
@@ -36,7 +63,7 @@ angular.module('tb.clickX', [])
 			        other_opera: /Opera Mini/i,
 			        other_chrome: /(CriOS|Chrome)(?=.*\bMobile\b)/i,
 			        other_firefox: /(?=.*\bFirefox\b)(?=.*\bMobile\b)/i, // Match 'Firefox' AND 'Mobile'
-			   	}; //https://github.com/kaimallea/isMobile/blob/master/isMobile.js, 20160207
+			   	};
 			
 		   	angular.forEach(mobileList, function(regex, type) {
 		   		if (isMobile) return false;
@@ -44,14 +71,6 @@ angular.module('tb.clickX', [])
 		   	});
 
 		   	return isMobile;
-		}
-
-		this.setActiveClass = function(className) {
-			this.activeClass = className;
-		}
-
-		this.$get = function() {
-			return this;
 		}
 	})
 
@@ -63,7 +82,8 @@ angular.module('tb.clickX', [])
 			link: function(scope, el, attrs) {
 				var element = el[0],
 					action = $parse(attrs.clickX),
-					activeClass = cx.activeClass;
+					activeClass = cx.activeClass,
+					swipe = cx.swipeDetect;
 
 				if (cx.isMobile) {
 					element.addEventListener('touchstart', actionPrepare);
@@ -89,7 +109,7 @@ angular.module('tb.clickX', [])
 
 					if (cx.isMobile) {
 						element.classList.add(activeClass);
-						setElemenetStart(e.changedTouches[0].clientX, e.changedTouches[0].clientY);
+						setElemenetStart(e.changedTouches[0]);
 					}
 					else {
 						if ($window.clickX.hasOwnProperty('startTarget')) {
@@ -99,7 +119,7 @@ angular.module('tb.clickX', [])
 						}
 						else {
 							element.classList.add(activeClass);
-							setElemenetStart(e.clientX, e.clientY);
+							setElemenetStart(e);
 						}
 					}
 				}
@@ -108,8 +128,14 @@ angular.module('tb.clickX', [])
 				//desc: on mouse button / finger release.
 				function actionLaunch(e) {
 					element.classList.remove(activeClass);
-					
-					if ((attrs.disabled === false || ! angular.isDefined(attrs.disabled)) && isSameTarget(e)) {
+
+					if (isSwipe(e)) {
+						return false;
+					}
+					else if ( ! isSameTarget(e)) {
+						return false;
+					}
+					else if ((attrs.disabled === false || ! angular.isDefined(attrs.disabled))) {
 						scope.$apply(function() {
 							action(scope, {$event: e});
 						});
@@ -166,6 +192,45 @@ angular.module('tb.clickX', [])
 					return isSameTarget;
 				}
 
+				//helperFn: isSwipe
+				//source: http://www.javascriptkit.com/javatutors/touchevents2.shtml
+				function isSwipe(e) {
+					var pageX, pageY, distX, distY,
+						elapsedTime, swipedir = 'none', isSwipe = false;
+
+					if (cx.isMobile) {
+						pageX = e.changedTouches[0].pageX;
+						pageY = e.changedTouches[0].pageY;
+					}
+					else {
+						pageX = e.pageX;
+						pageY = e.pageY;
+					}
+
+					//get horizontal & vertical dist traveled by finger while in contact with surface
+					distX = pageX - $window.clickX.swipePosition.startX; 
+					distY = pageY - $window.clickX.swipePosition.startY;
+					elapsedTime = new Date().getTime() - $window.clickX.swipePosition.startTime;
+
+					//check...
+					if (elapsedTime <= swipe.allowedTime) {
+						//... horizontal swipe condition
+						if (Math.abs(distX) >= swipe.threshold && Math.abs(distY) <= swipe.restraint){
+							//if dist traveled is negative, it indicates left swipe
+							//swipedir = (distX < 0) ? 'left' : 'right';
+							isSwipe = true;
+						}
+						//..vertical swipe condition
+						else if (Math.abs(distY) >= swipe.threshold && Math.abs(distX) <= swipe.restraint){
+							//if dist traveled is negative, it indicates up swipe
+							//swipedir = (distY < 0)? 'up' : 'down';
+							isSwipe = true;
+						}
+					}
+
+					return isSwipe;
+				}
+
 				//helperFn: bindWindowMouseUp
 				function bindWindowMouseUp(e){
 					if ($window.clickX.hasOwnProperty('startTarget')) {
@@ -211,10 +276,15 @@ angular.module('tb.clickX', [])
 				}
 
 				//helperFn: setElemenetStart
-				//desc: get element from x,y & calculate its start position
-				function setElemenetStart(clientX, clientY){
-					$window.clickX.startTarget = document.elementFromPoint(clientX, clientY);
+				//desc: get element & calculate/get its position
+				function setElemenetStart(position){
+					$window.clickX.startTarget = document.elementFromPoint(position.clientX, position.clientY);
 					$window.clickX.startPosition = getElementPosition($window.clickX.startTarget);
+					$window.clickX.swipePosition = {
+						startX: position.pageX,
+						startY: position.pageY,
+						startTime: new Date().getTime()
+					};
 				}
 
 				//helperFn: getClickXParent
@@ -234,7 +304,7 @@ angular.module('tb.clickX', [])
 					if (cx.isMobile) {
 						element.removeEventListener('touchstart', actionPrepare);
 						element.removeEventListener('touchend', actionLaunch);
-						element.removeEventListener('touchcancel', actionCancel);						
+						element.removeEventListener('touchcancel', actionCancel);
 					}
 					else {
 						element.removeEventListener('mousedown', actionPrepare);
