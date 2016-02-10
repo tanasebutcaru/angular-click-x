@@ -53,19 +53,19 @@ angular.module('tb.clickX', [])
 			var isMobile = false,
 				mobileList = {
 					apple_phone: /iPhone/i,
-			        apple_ipod: /iPod/i,
-			        apple_tablet: /iPad/i,
-			        android_phone: /(?=.*\bAndroid\b)(?=.*\bMobile\b)/i, // Match 'Android' AND 'Mobile'
-			        android_tablet: /Android/i,
-			        amazon_phone: /(?=.*\bAndroid\b)(?=.*\bSD4930UR\b)/i,
-			        amazon_tablet: /(?=.*\bAndroid\b)(?=.*\b(?:KFOT|KFTT|KFJWI|KFJWA|KFSOWI|KFTHWI|KFTHWA|KFAPWI|KFAPWA|KFARWI|KFASWI|KFSAWI|KFSAWA)\b)/i,
-			        windows_phone: /IEMobile/i,
-			        windows_tablet: /(?=.*\bWindows\b)(?=.*\bARM\b)/i, // Match 'Windows' AND 'ARM'
-			        other_blackberry: /BlackBerry/i,
-			        other_blackberry_10: /BB10/i,
-			        other_opera: /Opera Mini/i,
-			        other_chrome: /(CriOS|Chrome)(?=.*\bMobile\b)/i,
-			        other_firefox: /(?=.*\bFirefox\b)(?=.*\bMobile\b)/i, // Match 'Firefox' AND 'Mobile'
+					apple_ipod: /iPod/i,
+					apple_tablet: /iPad/i,
+					android_phone: /(?=.*\bAndroid\b)(?=.*\bMobile\b)/i, // Match 'Android' AND 'Mobile'
+					android_tablet: /Android/i,
+					amazon_phone: /(?=.*\bAndroid\b)(?=.*\bSD4930UR\b)/i,
+					amazon_tablet: /(?=.*\bAndroid\b)(?=.*\b(?:KFOT|KFTT|KFJWI|KFJWA|KFSOWI|KFTHWI|KFTHWA|KFAPWI|KFAPWA|KFARWI|KFASWI|KFSAWI|KFSAWA)\b)/i,
+					windows_phone: /IEMobile/i,
+					windows_tablet: /(?=.*\bWindows\b)(?=.*\bARM\b)/i, // Match 'Windows' AND 'ARM'
+					other_blackberry: /BlackBerry/i,
+					other_blackberry_10: /BB10/i,
+					other_opera: /Opera Mini/i,
+					other_chrome: /(CriOS|Chrome)(?=.*\bMobile\b)/i,
+					other_firefox: /(?=.*\bFirefox\b)(?=.*\bMobile\b)/i, // Match 'Firefox' AND 'Mobile'
 			   	};
 			
 		   	angular.forEach(mobileList, function(regex, type) {
