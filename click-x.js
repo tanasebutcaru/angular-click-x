@@ -106,7 +106,7 @@ angular.module('tb.clickX', [])
 				//fn: actionPrepare
 				//desc: on mouse button / finger press.
 				function actionPrepare(e) {
-					if (attrs.disabled === true || angular.isDefined(attrs.disabled)) {
+					if (attrs.hasOwnProperty('disabled') && attrs.disabled === true) {
 						e.preventDefault();
 					}
 
@@ -138,7 +138,7 @@ angular.module('tb.clickX', [])
 					else if ( ! isSameTarget(e)) {
 						return false;
 					}
-					else if ((attrs.disabled === false || ! angular.isDefined(attrs.disabled))) {
+					else if ((attrs.hasOwnProperty('disabled') && attrs.disabled === false) || ! attrs.hasOwnProperty('disabled')) {
 						scope.$apply(function() {
 							action(scope, {$event: e});
 						});
