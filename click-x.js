@@ -397,7 +397,7 @@ angular.module('tb.clickX', [])
 						element.removeEventListener('mouseleave', bindElementMouseLeave);
 					}
 
-					element.removeEventListener('click', stopClickAction);
+					element.removeEventListener('click', bindElementClick);
 					resetClickXData();
 				});
 			}
