@@ -16,9 +16,9 @@ angular.module('tb.clickX', [])
 	
 	.provider('clickXConfig', function() {
 		window.clickX = {};
-		this.activeClass = 'click-x-active';
 		this.isMobile = getDeviceType();
-		this.swipeDetect = {
+		this.activeClass = 'click-x-active';
+		this.swipeConfig = {
 			//required min distance traveled to be considered swipe (px)
 			threshold: 50,
 			//max distance allowed at the same time in perpendicular direction (px)
@@ -33,11 +33,11 @@ angular.module('tb.clickX', [])
 			}
 		}
 
-		this.configSwipeDetection = function(swipeOptions) {
+		this.setSwipeConfig = function(swipeOptions) {
 			if (angular.isObject(swipeOptions)) {
 				angular.forEach(swipeOptions, function(optionValue, optionName) {
-					if (this.swipeDetect.hasOwnProperty(optionName) && angular.isNumber(optionValue)) {
-						this.swipeDetect[optionName] = optionValue;
+					if (this.swipeConfig.hasOwnProperty(optionName) && angular.isNumber(optionValue)) {
+						this.swipeConfig[optionName] = optionValue;
 					}
 				}, this);
 			}
@@ -66,12 +66,12 @@ angular.module('tb.clickX', [])
 					other_opera: /Opera Mini/i,
 					other_chrome: /(CriOS|Chrome)(?=.*\bMobile\b)/i,
 					other_firefox: /(?=.*\bFirefox\b)(?=.*\bMobile\b)/i, // Match 'Firefox' AND 'Mobile'
-			   	};
+				};
 			
-		   	angular.forEach(mobileList, function(regex, type) {
-		   		if (isMobile) return false;
-		   		else isMobile = regex.test(navigator.userAgent);
-		   	});
+				angular.forEach(mobileList, function(regex, type) {
+					if (isMobile) return false;
+					else isMobile = regex.test(navigator.userAgent);
+				});
 
 		   	return isMobile;
 		}
@@ -84,9 +84,7 @@ angular.module('tb.clickX', [])
 			
 			link: function(scope, el, attrs) {
 				var element = el[0],
-					action = $parse(attrs.clickX),
-					activeClass = cx.activeClass,
-					swipe = cx.swipeDetect;
+					action = $parse(attrs.clickX);
 
 				if (cx.isMobile) {
 					element.addEventListener('touchstart', actionPrepare);
@@ -101,176 +99,164 @@ angular.module('tb.clickX', [])
 					element.addEventListener('mouseleave', bindElementMouseLeave);
 				}
 				
-				element.addEventListener('click', stopClickAction);
+				element.addEventListener('click', bindElementClick);
 
 				//fn: actionPrepare
-				//desc: on mouse button / finger press.
+				//desc: on target press
 				function actionPrepare(e) {
-					if (attrs.hasOwnProperty('disabled') && attrs.disabled === true) {
-						e.preventDefault();
+					//`touchstart`
+					if (cx.isMobile) {
+						setTarget(e);
+					}
+					//`mousedown`
+					else if ( ! $window.clickX.hasOwnProperty('startTarget')) {
+						setTarget(e);
+					}
+					//`mouseenter` after a `mouseleave`
+					else if ( ! isSameTarget(e)) {
+						return false;
 					}
 
-					if (cx.isMobile) {
-						element.classList.add(activeClass);
-						setElemenetStart(e.changedTouches[0]);
+					if ( ! isDisabled()) {
+						element.classList.add(cx.activeClass);
 					}
 					else {
-						if ($window.clickX.hasOwnProperty('startTarget')) {
-							if (isSameTarget(e, true)) {
-								element.classList.add(activeClass);
-							}
-						}
-						else {
-							element.classList.add(activeClass);
-							setElemenetStart(e);
-						}
+						resetClickXData();
 					}
 				}
 
 				//fn: actionLaunch
-				//desc: on mouse button / finger release.
+				//desc: on target release
 				function actionLaunch(e) {
-					element.classList.remove(activeClass);
+					//set final target & remove active class
+					setTarget(e, 'end');
+					element.classList.remove(cx.activeClass);
 
-					if (isSwipe(e)) {
-						return false;
-					}
-					else if ( ! isSameTarget(e)) {
-						return false;
-					}
-					else if ((attrs.hasOwnProperty('disabled') && attrs.disabled === false) || ! attrs.hasOwnProperty('disabled')) {
+					//check things before action launch
+					if ( ! isSwipe().active && ! isDisabled() && isSameTarget()) {
+						//finally, launch desired action :)
 						scope.$apply(function() {
 							action(scope, {$event: e});
 						});
 					}
+
+					//reset clickX data
+					resetClickXData();
 				}
 
 				//fn: actionCancel
-				//desc: on mousel leave / touch cancel.
+				//desc: on target cancel
 				function actionCancel(e) {
-					element.classList.remove(activeClass);
-				}
-
-				//helperFn: isSameTarget
-				//desc: before launch, check if the action is released upon same target or its child nodes.
-				function isSameTarget(e, justCheck) {
-					var startTarget, endClientX, endClientY, endTarget,
-						isChild = false, isEqual = false, isSameTarget = false,
-						startPosition,  endPosition;
-
-					if (cx.isMobile) {
-						endClientX = e.changedTouches[0].clientX;
-						endClientY = e.changedTouches[0].clientY;
-						startTarget = element;
-					}
-					else if ($window.hasOwnProperty('clickX')) {
-						endClientX = e.clientX;
-						endClientY = e.clientY;
-						startTarget = $window.clickX.startTarget;
-					}
-					else {
-						return isSameTarget;
-					}
-
-					endTarget = document.elementFromPoint(endClientX, endClientY);
-					isChild = startTarget.contains(endTarget);
-					isEqual = startTarget.isEqualNode(endTarget);
-					isSameTarget = isChild || isEqual;
-
-					//check if target position remains the same
-					//if diff, then a scroll happend
-					if (isSameTarget) {
-						startPosition = $window.clickX.startPosition;
-						endPosition = getElementPosition($window.clickX.startTarget);
-
-						if ( ! angular.equals(startPosition, endPosition)) {
-							isSameTarget = false;
-						}
-					}
-
-					if ( ! justCheck) {
-						clickXWindowClean();
-					}
-
-					return isSameTarget;
-				}
-
-				//helperFn: isSwipe
-				//source: http://www.javascriptkit.com/javatutors/touchevents2.shtml
-				function isSwipe(e) {
-					var pageX, pageY, distX, distY,
-						elapsedTime, swipedir = 'none', isSwipe = false;
-
-					if (cx.isMobile) {
-						pageX = e.changedTouches[0].pageX;
-						pageY = e.changedTouches[0].pageY;
-					}
-					else {
-						pageX = e.pageX;
-						pageY = e.pageY;
-					}
-
-					//get horizontal & vertical dist traveled by finger while in contact with surface
-					distX = pageX - $window.clickX.swipePosition.startX; 
-					distY = pageY - $window.clickX.swipePosition.startY;
-					elapsedTime = new Date().getTime() - $window.clickX.swipePosition.startTime;
-
-					//check...
-					if (elapsedTime <= swipe.allowedTime) {
-						//... horizontal swipe condition
-						if (Math.abs(distX) >= swipe.threshold && Math.abs(distY) <= swipe.restraint){
-							//if dist traveled is negative, it indicates left swipe
-							//swipedir = (distX < 0) ? 'left' : 'right';
-							isSwipe = true;
-						}
-						//..vertical swipe condition
-						else if (Math.abs(distY) >= swipe.threshold && Math.abs(distX) <= swipe.restraint){
-							//if dist traveled is negative, it indicates up swipe
-							//swipedir = (distY < 0)? 'up' : 'down';
-							isSwipe = true;
-						}
-					}
-
-					return isSwipe;
+					element.classList.remove(cx.activeClass);
 				}
 
 				//helperFn: bindWindowMouseUp
-				function bindWindowMouseUp(e){
+				function bindWindowMouseUp(e) {
 					if ($window.clickX.hasOwnProperty('startTarget')) {
-						if ( ! isSameTarget(e, true)) {
-							clickXWindowClean();
+						if ( ! isSameTarget(e)) {
+							resetClickXData();
 						}
 					}
 				}
 
 				//helperFn: bindElementMouseEnter
-				function bindElementMouseEnter(e){
+				function bindElementMouseEnter(e) {
 					if ($window.clickX.hasOwnProperty('startTarget')) {
 						actionPrepare(e);
 					}
 				}
 
 				//helperFn: bindElementMouseLeave
-				function bindElementMouseLeave(e){
-					if($window.clickX.hasOwnProperty('startTarget')) {
+				function bindElementMouseLeave(e) {
+					if ($window.clickX.hasOwnProperty('startTarget')) {
 						actionCancel(e);
 					}
 				}
 
-				//helperFn: stopClickAction
-				function stopClickAction(e) {
+				//helperFn: bindElementClick
+				function bindElementClick(e) {
 					e.preventDefault();
+					e.stopPropagation();
 				}
 
-				//helperFn: clickXClean
-				function clickXWindowClean() {
-					for (var prop in $window.clickX) {
-						delete $window.clickX[prop];
+				//helperFn: setTarget
+				//desc: get element & calculate its position
+				function setTarget(e, type) {
+					var clientX, clientY, pageX, pageY,
+						target, position, swipe;
+
+					//get coords
+					if (cx.isMobile) {
+						clientX = e.changedTouches[0].clientX;
+						clientY = e.changedTouches[0].clientY;
+						pageX = e.changedTouches[0].pageX;
+						pageY = e.changedTouches[0].pageY;
+					}
+					else {
+						clientX = e.clientX;
+						clientY = e.clientY;
+						pageX = e.pageX;
+						pageY = e.pageY;
+					}
+
+					//set target data keys
+					if (type == 'end') {
+						target = 'endTarget';
+						position = 'endPosition';
+						swipe = 'endSwipe';
+					}
+					else {
+						target = 'startTarget';
+						position = 'startPosition';
+						swipe = 'startSwipe';
+					}
+
+					//get & register target data to clickX
+					$window.clickX[target] = getClickXTarget(clientX, clientY);
+					//do we have a target?
+					if ($window.clickX[target] === false) {
+						resetClickXData();
+					}
+					//good, set the rest now!
+					else {
+						$window.clickX[position] = getTargetPosition($window.clickX[target]);
+						$window.clickX[swipe] = { x: pageX, y: pageY, time: new Date().getTime() };
 					}
 				}
 
-				//helperFn: getElementPosition
-				function getElementPosition(elem) {
+				//helperFn: getClickXTarget
+				//desc: determine the (parent) node with click-x attr
+				function getClickXTarget(x, y) {
+					var target = false;
+					var targetFromCoords = document.elementFromPoint(x, y);
+
+					//do we have a valid target?
+					if (targetFromCoords === null || ! angular.isFunction(targetFromCoords.hasAttribute)) {
+						target = false;
+					}
+					//good, check if this is the element itself
+					else if (targetFromCoords.hasAttribute('click-x') === true) {
+						target = targetFromCoords;
+					}
+					//nope. go up thru all parent nodes until we find it
+					else {
+						target = targetFromCoords.parentNode;
+						while (target !== null && angular.isFunction(target.hasAttribute) && target.hasAttribute('click-x') === false) {
+							target = target.parentNode;
+						}
+
+						//check if we reached the #document
+						if (target === null || ! angular.isFunction(target.hasAttribute)) {
+							target = false;
+						}
+					}
+
+					return target;
+				}
+
+				//helperFn: getTargetPosition
+				//desc: get target position
+				function getTargetPosition(elem) {
 					return {
 						top: elem.getBoundingClientRect().top,
 						left: elem.getBoundingClientRect().left,
@@ -278,28 +264,122 @@ angular.module('tb.clickX', [])
 					};
 				}
 
-				//helperFn: setElemenetStart
-				//desc: get element & calculate/get its position
-				function setElemenetStart(position){
-					$window.clickX.startTarget = document.elementFromPoint(position.clientX, position.clientY);
-					$window.clickX.startPosition = getElementPosition($window.clickX.startTarget);
-					$window.clickX.swipePosition = {
-						startX: position.pageX,
-						startY: position.pageY,
-						startTime: new Date().getTime()
-					};
-				}
+				//helperFn: isSameTarget
+				//desc: check if two targets (start & end) are the same
+				function isSameTarget(customEvent) {
+					var startTarget, endTarget, startPosition, endPosition,
+						isSameTarget = false;
 
-				//helperFn: getClickXParent
-				//desc: determine the parent node with click-x attr
-				function getClickXParent(childEl) {
-					var parentEl = childEl.parentNode;
+					//get custom end target & its position
+					if (angular.isDefined(customEvent)) {
+						if (cx.isMobile) {
+							var endClientX = customEvent.changedTouches[0].clientX;
+							var endClientY = customEvent.changedTouches[0].clientY;
+						}
+						else {
+							var endClientX = customEvent.clientX;
+							var endClientY = customEvent.clientY;
+						}
 
-					while (parentEl.hasAttribute('click-x') === false) {
-						parentEl = parentEl.parentNode;
+						//get custom end target
+						endTarget = getClickXTarget(endClientX, endClientY);
+						//do we have a final target?
+						if (endTarget === false) {
+							return false;
+						}
+						//good, get position now!
+						else {
+							endPosition = getTargetPosition(endTarget);
+						}
+					}
+					else if ($window.clickX.hasOwnProperty('endTarget')) {
+						endTarget = $window.clickX.endTarget;
+						endPosition = $window.clickX.endPosition;
+					}
+					else {
+						return false;
 					}
 
-					return parentEl;
+					//set start target directly from clickX, if defined
+					if ($window.clickX.hasOwnProperty('startTarget')) {
+						startTarget = $window.clickX.startTarget;
+						startPosition = $window.clickX.startPosition;
+					}
+					else {
+						return false;
+					}
+
+					//get targets equality
+					isSameTarget = startTarget.isEqualNode(endTarget);
+
+					//check if target position remained the same
+					//if diff, then a scroll happend
+					if (isSameTarget && ! angular.equals(startPosition, endPosition)) {
+						isSameTarget = false;
+					}
+
+					return isSameTarget;
+				}
+
+				//helperFn: isSwipe
+				//source: http://www.javascriptkit.com/javatutors/touchevents2.shtml
+				function isSwipe() {
+					var distX, distY, elapsedTime,
+						isSwipe = { active: false, dir: 'none'};
+
+					//check if we have targets
+					if ( ! $window.clickX.hasOwnProperty('endTarget') ||  ! $window.clickX.hasOwnProperty('startTarget')) {
+						return isSwipe;
+					}
+
+					//get horizontal & vertical dist traveled by finger while in contact with surface
+					distX = $window.clickX.endSwipe.x - $window.clickX.startSwipe.x; 
+					distY = $window.clickX.endSwipe.y - $window.clickX.startSwipe.y;
+					elapsedTime = $window.clickX.endSwipe.time - $window.clickX.startSwipe.time;
+
+					//check...
+					if (elapsedTime <= cx.swipeConfig.allowedTime) {
+						//... horizontal swipe condition
+						if (Math.abs(distX) >= cx.swipeConfig.threshold && Math.abs(distY) <= cx.swipeConfig.restraint) {
+							//if dist traveled is negative, it indicates left swipe
+							isSwipe.dir = (distX < 0) ? 'left' : 'right';
+							isSwipe.active = true;
+						}
+						//..vertical swipe condition
+						else if (Math.abs(distY) >= cx.swipeConfig.threshold && Math.abs(distX) <= cx.swipeConfig.restraint) {
+							//if dist traveled is negative, it indicates up swipe
+							isSwipe.dir = (distY < 0)? 'up' : 'down';
+							isSwipe.active = true;
+						}
+					}
+
+					return isSwipe;
+				}
+
+				//helperFn: isDisabled
+				function isDisabled() {
+					var isDisabled = false;
+
+					//if this is called before launch,
+					//check if the final target is disabled
+					if ($window.clickX.hasOwnProperty('endTarget')) {
+						isDisabled = $window.clickX.endTarget.getAttribute('disabled');
+					}
+					else if ($window.clickX.hasOwnProperty('startTarget')) {
+						isDisabled = $window.clickX.startTarget.getAttribute('disabled');
+					}
+					else {
+						isDisabled = false;
+					}
+
+					return isDisabled;
+				}
+
+				//helperFn: resetClickXData
+				function resetClickXData() {
+					for (var prop in $window.clickX) {
+						delete $window.clickX[prop];
+					}
 				}
 
 				//clean up!
@@ -318,7 +398,7 @@ angular.module('tb.clickX', [])
 					}
 
 					element.removeEventListener('click', stopClickAction);
-					clickXWindowClean();
+					resetClickXData();
 				});
 			}
 		}
