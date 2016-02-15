@@ -15,6 +15,8 @@ Install
 
 Include the `click-x.js` / `click-x.min.js` script provided by this component in your app.
 
+You can also use a CDN: `https://cdn.rawgit.com/TanaseButcaru/angular-click-x/1.1.0/click-x.min.js`
+
 Make sure to add `tb.clickX` to your app’s module dependencies.
 
 ```js
