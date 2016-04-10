@@ -1,0 +1,43 @@
+{
+  "name": "angular-click-x",
+  "homepage": "https://github.com/TanaseButcaru/angular-click-x",
+  "authors": [
+    {
+      "name" : "Tanase Butcaru",
+      "email" : "contact@butcaru.com",
+      "homepage" : "http://www.butcaru.com"
+    }
+  ],
+  "description": "clickX is an alternative to core ngClick directive provided by ngTouch module. Simple, configurable & lightweight!",
+  "main": [
+    "click-x.js"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "git://github.com/TanaseButcaru/angular-click-x.git"
+  },
+  "dependencies": {
+    "angular": ">=1.5.0"
+  },
+  "keywords": [
+    "angular",
+    "angularjs",
+    "angular-touch",
+    "angular-click",
+    "angular-click-x",
+    "clickX",
+    "ngClick",
+    "ngTouch",
+    "touch",
+    "click"
+  ],
+  "license": "MIT",
+  "private": true,
+  "ignore": [
+    "**/.*",
+    "node_modules",
+    "bower_components",
+    "test",
+    "tests"
+  ]
+}
