@@ -15,14 +15,18 @@ Install
 
 Include the `click-x.js` / `click-x.min.js` script provided by this component in your app.
 
-Make sure to add `tb.clickX` to your app’s module dependencies.
+via CDN: `https://cdn.rawgit.com/TanaseButcaru/angular-click-x/1.1.1/click-x.min.js`  
+via NPM: ``npm install angular-click-x``
+
+
+Configuration
+-------
+Before any configuration, make sure to add `tb.clickX` to your app’s module dependencies:
 
 ```js
 angular.module('yourApp', ['tb.clickX']);
 ````
 
-Configuration
--------
 Inject the ``clickXConfigProvider`` provider in your ``config`` block and configure ``clickX`` as follows:
 
 * change default active class name (defaults to ``click-x-active``)
