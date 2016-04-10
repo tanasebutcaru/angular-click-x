@@ -16,7 +16,8 @@ Install
 Include the `click-x.js` / `click-x.min.js` script provided by this component in your app.
 
 via CDN: `https://cdn.rawgit.com/TanaseButcaru/angular-click-x/1.1.1/click-x.min.js`  
-via NPM: ``npm install angular-click-x``
+via NPM: ``npm install angular-click-x``  
+via Bower: ``bower install angular-click-x``
 
 
 Configuration
