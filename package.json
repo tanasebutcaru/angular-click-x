@@ -1,6 +1,6 @@
 {
   "name": "angular-click-x",
-  "version": "1.1.1",
+  "version": "1.1.2",
   "description": "clickX is an alternative to core ngClick directive provided by ngTouch module. Simple, configurable & lightweight!",
   "keywords": [
     "angular",

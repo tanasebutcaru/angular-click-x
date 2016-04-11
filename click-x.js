@@ -1,7 +1,7 @@
 'use strict';
 
 /*
- * angular-click-x v1.1.1
+ * angular-click-x v1.1.2
  * (c) 2016 Tanase Butcaru, http://www.butcaru.com
  * License: MIT
  * 
